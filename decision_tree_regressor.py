@@ -37,6 +37,7 @@ class DecisionTreeRegressor:
         self.skip_split = False
         self.current_error = None
         self.leaves = 0
+        self.samples = 0
         #defining the attributes of the DecisionTree class, including left and right child nodes, split feature and value, node value, and a flag for single-value features
 
     def __mse(self,data):
@@ -59,8 +60,7 @@ class DecisionTreeRegressor:
             return 0
 
     def __ccp_helper(self):
-
-        if not (pd.isna(self.left_child) or pd.isna(self.right_child)):
+        if self.left_child is not None and self.right_child is not None:
             left_error, left_leaves = self.left_child.__ccp_helper()
             right_error, right_leaves = self.right_child.__ccp_helper()
             error = left_error + right_error
@@ -68,24 +68,29 @@ class DecisionTreeRegressor:
             return (error,leaf_number)
         else:
 
-            return (self.current_error,1)
+            return (self.current_error*self.samples,1)
+        #helper function used to obtain data of subtrees for ccp
         
 
     def __ccp(self,ccp_alpha:float):
         #cost complexity pruning
         if self.left_child is not None and self.right_child is not None:
+
+            self.left_child.__ccp(ccp_alpha)
+            self.right_child.__ccp(ccp_alpha)
+            #prune children first
+
             sub_tree_error,leaf_num = self.__ccp_helper()
-            current_alpha = (self.current_error - sub_tree_error) / (leaf_num - 1) #might be a problem here
-            print(f"alpha:{current_alpha}")
-            if current_alpha < ccp_alpha:
+            if leaf_num <= 1:
+                return #avoiding bugs
+            
+            current_alpha = (self.current_error*self.samples - sub_tree_error) / (leaf_num - 1)
+            if current_alpha <= ccp_alpha:
                 self.left_child = None
                 self.right_child = None
                 self.split_feature = None
                 self.split_value = None
-            else:
-                self.left_child.__ccp(ccp_alpha)
-                self.right_child.__ccp(ccp_alpha)
-        
+            #pruning
     
     def fit(self,features:pd.DataFrame,target:pd.DataFrame,max_depth:int=None,criterion="squared_error",splitter="best",max_features=None,min_samples_split:int=2,min_samples_leaf:int=1,ccp_alpha:int=0,random_state:int = 0):
 
@@ -102,7 +107,7 @@ class DecisionTreeRegressor:
             raise ValueError("Invalid criterion. Use 'squared_error' or 'absolute_error'.")
         #selecting the criterion function based on the given parameter
 
-        random.seed = random_state
+        random.seed(random_state)
         minimum_split_feature = None
         minimum_split_value = None
         left_data = None
@@ -110,10 +115,11 @@ class DecisionTreeRegressor:
         left_target = None
         right_target = None
         minimum_error = float('inf')
-        self.current_error = criterion_function(target.to_numpy().squeeze())*len(target)
+        self.current_error = criterion_function(target.to_numpy().squeeze())
+        self.samples = len(features)
         #setting up variables to record the best split's data
 
-        if len(features) < min_samples_split or max_depth == 1 or target.nunique() == 1: # or minimum_split_feature is None:# or len(minimum_left_data) == 0 or len(minimum_right_data) == 0:
+        if self.samples < min_samples_split or max_depth == 1 or target.nunique() == 1: # or minimum_split_feature is None:# or len(minimum_left_data) == 0 or len(minimum_right_data) == 0:
             return
 
         feature_index = list(features.columns)
@@ -131,24 +137,21 @@ class DecisionTreeRegressor:
             #this list will be used to calculate the values of each split point
 
             if len(feature_data) == 1:
-                #error = self.__mse(target.values)
-                if False:#error < minimum_error:
-                    minimum_error = error
-                    minimum_split_feature = None
-                    minimum_split_value = None
-                    self.single_value_feature = True    
                 continue
-            #When there was no possible split, this part was used to test whether ignoring or considering not splitting was better
-
 
             if splitter == "best":
                 feature_data.sort()
                 split_values = [(value1 + value2)/2 for value1,value2 in zip(feature_data[1:],feature_data[:-1])]
             elif splitter == "random":
-                split_values = [random.gauss(mu=(max(feature_data) + min(feature_data))/2,sigma=1.0) for _ in range(5)] #should be fixed
+                if set(feature_data).issubset({0, 1}):
+                    split_values = [0.5]
+                else:
+                    min_val = np.nanmin(feature_data)
+                    max_val = np.nanmax(feature_data)
+                    split_values = [random.uniform(min_val, max_val) for _ in range(10)]
             #selecting split points based on the given splitter parameter
             #best: compare every possible split point and choose the best one
-            #random: randomly select 5 split points in the range using gauss distribution, and choose the best one
+            #random: randomly select 10 split points in the range
 
 
             for split_value in split_values:
@@ -172,7 +175,7 @@ class DecisionTreeRegressor:
                 error = criterion_function(left_target.to_numpy().squeeze()) * len(left_target) + criterion_function(right_target.to_numpy().squeeze()) * len(right_target)
                 #calculating the error of the split point based on the criterion function
 
-                if error < minimum_error and error < self.current_error:
+                if error < minimum_error and error < self.current_error*self.samples:
                     minimum_left_data = left_data
                     minimum_right_data = right_data
                     minimum_left_target = left_target
@@ -188,35 +191,31 @@ class DecisionTreeRegressor:
 
         if minimum_split_feature is None:
             return 
-
-        elif pd.isna(max_depth):
+        elif max_depth is None or max_depth > 1:
             self.split_feature = minimum_split_feature
             self.split_value = minimum_split_value
             
             
             self.left_child = DecisionTreeRegressor()
             self.right_child = DecisionTreeRegressor()
-            self.left_child.fit(minimum_left_data, minimum_left_target,criterion=criterion,
-                                splitter=splitter,max_features=max_features,min_samples_split=min_samples_split)
-            self.right_child.fit(minimum_right_data, minimum_right_target,criterion=criterion,
-                                 splitter=splitter,max_features=max_features,min_samples_split=min_samples_split)
 
-        elif max_depth > 1:
-            self.split_feature = minimum_split_feature
-            self.split_value = minimum_split_value
-
-
-            self.left_child = DecisionTreeRegressor()
-            self.right_child = DecisionTreeRegressor()
-            self.left_child.fit(minimum_left_data, minimum_left_target, max_depth=(max_depth - 1),
-                                criterion=criterion,splitter=splitter,max_features=max_features,min_samples_split=min_samples_split)
-            self.right_child.fit(minimum_right_data, minimum_right_target, max_depth=(max_depth - 1),
-                                 criterion=criterion,splitter=splitter,max_features=max_features,min_samples_split=min_samples_split)
+            if pd.isna(max_depth):
+                self.left_child.fit(minimum_left_data, minimum_left_target,criterion=criterion,
+                                    splitter=splitter,max_features=max_features,min_samples_split=min_samples_split)
+                self.right_child.fit(minimum_right_data, minimum_right_target,criterion=criterion,
+                                    splitter=splitter,max_features=max_features,min_samples_split=min_samples_split)
+            elif max_depth > 1:
+                self.left_child.fit(minimum_left_data, minimum_left_target, max_depth=(max_depth - 1),
+                                    criterion=criterion,splitter=splitter,max_features=max_features,min_samples_split=min_samples_split)
+                self.right_child.fit(minimum_right_data, minimum_right_target, max_depth=(max_depth - 1),
+                                    criterion=criterion,splitter=splitter,max_features=max_features,min_samples_split=min_samples_split)                       
         #if can split, create left and right child nodes and fit them recursively with the remaining depth
 
-
-        if ccp_alpha != 0 and ccp_alpha > 0:
+        if ccp_alpha < 0:
+            raise ValueError("ccp_alpha must be greater than 0")
+        elif ccp_alpha > 0:
             self.__ccp(ccp_alpha)
+        
 
     def __row_predict(self,row:pd.DataFrame):
 
@@ -233,38 +232,6 @@ class DecisionTreeRegressor:
         predictions = {i: self.__row_predict(features.loc[i]) for i in features.index}
         return pd.DataFrame(predictions.values(), index=predictions.keys())    
         #predict the values for all rows in the given features DataFrame by calling __row_predict for each row
-
-
-
-if False:#__name__ == "__main__":
-    random.seed(1)
-
-    start = time.time()
-
-    data = pd.read_csv("data/laptop_data (1).csv")
-    features = ["Company", "TypeName", "Inches", "ScreenResolution", "Ram", "Memory", "Weight", "Cpu", "Gpu", "OpSys"]
-    X = data[features]
-    y = data["Price"]
-    X_encoded = pd.get_dummies(X, columns=features)
-    model = DecisionTreeRegressor()
-    model.fit(X_encoded, y, max_depth=7,criterion="absolute_error",splitter="best",max_features=100,min_samples_split=200,min_samples_leaf=100)
-    predictions = model.predict(X_encoded)
-
-    end = time.time()
-
-    for target, prediction in zip(y.head(10).values, predictions.head(10).values):
-        
-        print(f"Target: {target}, Prediction: {prediction[0]}")
-        #print(f"AE: {mae(target, prediction)}, SE: {mse(target, prediction)}\n")
-
-    print(f"RMSE: {mse(y.head(1000).values, predictions.head(1000).values)**0.5}")
-    print(f"MAE: {mae(y.head(1000).values, predictions.head(1000).values)}")
-
-    print(f"Time taken: {end - start} seconds")
-    #In this experiment, I initially applied one-hot encoding to all features using pandas.get_dummies.
-    #However, I later realized that some features are inherently numerical and can be treated as continuous variables, 
-    #which allows the model to perform more meaningful splits compared to treating them as purely categorical.
-
 
 
 if __name__ == "__main__":
@@ -355,17 +322,17 @@ if __name__ == "__main__":
     start = time.time()
 
     model = DecisionTreeRegressor()
-    model.fit(X_encoded, y, max_depth=10,criterion="squared_error",splitter="best",max_features=200,min_samples_split=50,min_samples_leaf=10,random_state = 1)
+    model.fit(X_encoded, y, max_depth=15,criterion="squared_error",splitter="random",max_features=200,min_samples_split=50,min_samples_leaf=10,random_state = 1)
     predictions = model.predict(X_encoded)
+    #creating the model, fitting data, and making predictions
 
     end = time.time()
     
 
-
-    print(f"time spent:{end-start}")
     for target, prediction in zip(y.head(100).values, predictions.head(100).values):
             
         print(f"Target: {target}, Prediction: {prediction[0]}, Error: {mae(target, prediction)}\n")
-    
+
+    print(f"time spent:{end-start}")
     print(f"RMSE: {mse(y.head(1000).values, predictions.head(1000).values)**0.5}")
     print(f"MAE: {mae(y.head(1000).values, predictions.head(1000).values)}")
