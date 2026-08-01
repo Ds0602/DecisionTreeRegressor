@@ -90,6 +90,7 @@ The dataset used in this project comes from Kaggle.
 ## File
 
 * `decision_tree_regressor.py`: main implementation
+* `laptop_data (1).csv`: data set used for testing
 
 ## License
 
