@@ -122,16 +122,16 @@ class DecisionTreeRegressor:
         if self.samples < min_samples_split or max_depth == 1 or target.nunique() == 1: # or minimum_split_feature is None:# or len(minimum_left_data) == 0 or len(minimum_right_data) == 0:
             return
 
-        feature_index = list(features.columns)
+        feature_columns = list(features.columns)
         if max_features is not None:
-            random.shuffle(feature_index)
-            feature_index = feature_index[:max_features]
+            random.shuffle(feature_columns)
+            feature_columns = feature_columns[:max_features]
         #if it is given a max_features parameter, it will randomly select that number of features to consider
         
 
 
 
-        for feature in feature_index:
+        for feature in feature_columns:
 
             feature_data = list(set(features[feature]))
             #this list will be used to calculate the values of each split point
