@@ -1,0 +1,51 @@
+MODEL: Decision Tree Regressor
+
+TEST: Cross Validation (Splitting data into 5 folds)
+
+PARAMETERS:
+max_depth = 15
+criterion = "squared_error"
+splitter = "best"
+max_features = 250
+min_samples_split = 10
+min_samples_leaf = 2
+ccp_alpha = 400 000 000
+random_state = 1
+
+DATASET:
+min = 9270.72
+max = 324954.72
+mean = 59870.04
+length = 1303
+
+RESULTS:
+rmse = 18557.54
+mae = 11503.43
+rmse% = 31.00%
+mae% = 19.21%
+prediction_mean = 59543.79
+mean_difference% = 0.54%
+time taken = 147.30 seconds
+time taken per iteration = 147.30 / 5 = 29.46 seconds
+
+Absolute Error / frequency / percentage frequency / accumulated percentage frequency
+0% - 10%:        449         34.46%                 34.46%
+10% - 20%:       362         27.78%                 62.24%
+20% - 30%:       210         16.12%                 78.36%
+30% - 40%:       144         11.05%                 89.41%
+40% - 50%:       56          4.30%                  93.71%
+50% - 60%:       34          2.61%                  96.32%
+60% - 70%:       14          1.07%                  97.39%
+70% - 80%:       13          1.00%                  98.39%
+80% - 90%:       9           0.69%                  99.08%
+90%-100%:        3           0.23%                  99.31%
+>100%:           9           0.69%                  100.00%
+
+OBSERVATION:
+- The model achieved a reasonably good performance, with a mean absolute error of 19.21% < 20%, 
+  though high rmse (31.00%) means that there are occasionally very inaccurate predictions (outliers).
+- 62.24% of predictions were accurate (error < 20%), while 27.17% had moderate error (20% - 40%).
+  The remaining 10.59% of predictions were highly innacurate (error > 40%).
+- By applying pre-pruning and post-pruning techniques (e.g., limiting max_features, min_samples_split), 
+  the model focuses on general patterns while avoiding noise, thereby reducing overfitting and improving generalization.
+- The time taken (~30 seconds per iteration) is relatively high for this dataset size, suggesting potential room for optimization
