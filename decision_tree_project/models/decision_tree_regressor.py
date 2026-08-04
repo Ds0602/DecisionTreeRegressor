@@ -39,6 +39,7 @@ class DecisionTreeRegressor:
         self.current_error = None
         self.leaves = 0
         self.samples = 0
+        self.null_direction = None
         #defining the attributes of the DecisionTree class, including left and right child nodes, split feature and value, node value, and a flag for single-value features
 
         self.max_depth = max_depth
@@ -152,7 +153,7 @@ class DecisionTreeRegressor:
 
         for feature in feature_columns:
 
-            feature_data = list(set(features[feature]))
+            feature_data = sorted(features[feature].dropna().unique())
             #this list will be used to calculate the values of each split point
 
             if len(feature_data) == 1:
@@ -180,32 +181,40 @@ class DecisionTreeRegressor:
                 right_data = features[features[feature] > split_value]
 
                 nan_data = features[pd.isna(features[feature])]
-                left_data = pd.concat([left_data,nan_data])
-
-                left_target = target.loc[left_data.index]
-                right_target = target.loc[right_data.index]
-                #splitting the data into left and right based on the split point
-
-                if len(left_target) < min_samples_leaf or len(right_target) < min_samples_leaf:
-                    continue
-                #if the length of samples in one of the leafs is less than min_samples_leaf parameter, then it won't be considered
+                for null_direction in ["left","right"]:
+                    if null_direction == "left":
+                        left_data = pd.concat([left_data,nan_data])
+                    elif null_direction == "right":
+                        right_data = pd.concat([right_data,nan_data])
 
 
-                error = criterion_function(left_target.to_numpy().squeeze()) * len(left_target) + criterion_function(right_target.to_numpy().squeeze()) * len(right_target)
-                #calculating the error of the split point based on the criterion function
+                    left_target = target.loc[left_data.index]
+                    right_target = target.loc[right_data.index]
+                    #splitting the data into left and right based on the split point
 
-                if error < minimum_error and error < self.current_error*self.samples:
-                    minimum_left_data = left_data
-                    minimum_right_data = right_data
-                    minimum_left_target = left_target
-                    minimum_right_target = right_target
+                    if len(left_target) < min_samples_leaf or len(right_target) < min_samples_leaf:
+                        continue
+                    #if the length of samples in one of the leafs is less than min_samples_leaf parameter, then it won't be considered
+
+
+                    error = criterion_function(left_target.to_numpy().squeeze()) * len(left_target) + criterion_function(right_target.to_numpy().squeeze()) * len(right_target)
+                    #calculating the error of the split point based on the criterion function
+
+                    if error < minimum_error and error < self.current_error*self.samples:
+                        minimum_left_data = left_data
+                        minimum_right_data = right_data
+                        minimum_left_target = left_target
+                        minimum_right_target = right_target
 
                     
-                    minimum_error = error
-                    minimum_split_feature = feature
-                    minimum_split_value = split_value
-                    self.single_value_feature = False
-                #recording the data of the split point that minimizes error
+                        minimum_error = error
+                        minimum_split_feature = feature
+                        minimum_split_value = split_value
+
+
+                        self.single_value_feature = False
+                        self.null_direction = null_direction
+                        #recording the data of the split point that minimizes error
 
 
         if minimum_split_feature is None:
@@ -240,12 +249,12 @@ class DecisionTreeRegressor:
 
         if self.split_feature is None:
             return self.value            
-        elif row[self.split_feature] <= self.split_value or pd.isna(row[self.split_feature]):
+        elif row[self.split_feature] <= self.split_value or (pd.isna(row[self.split_feature]) and self.null_direction == "left"):
             return self.left_child.__row_predict(row)
-        elif row[self.split_feature] > self.split_value:
+        elif row[self.split_feature] > self.split_value or (pd.isna(row[self.split_feature]) and self.null_direction == "right"):
             return self.right_child.__row_predict(row)
         #predict the value for a single row based on the split feature and value, recursively calling the child nodes
-        #if the value of the split feature is Nan or None, then randomly choose a child
+
         
     def predict(self,features:pd.DataFrame):
         predictions = {i: self.__row_predict(features.loc[i]) for i in features.index}
@@ -254,7 +263,7 @@ class DecisionTreeRegressor:
 
 
 if __name__ == "__main__":
-    data = pd.read_csv("data/laptop_data (1).csv")
+    data = pd.read_csv("decision_tree_project/data/laptop_data.csv")
 
     screen_type = []
     resolution = []
@@ -338,57 +347,51 @@ if __name__ == "__main__":
     X_encoded = pd.get_dummies(X, columns=["Company","TypeName","ScreenType","MemoryType","AdditionalMemory","AdditionalMemoryType","CpuType","Gpu","OpSys"])
     #encoding categorical features, while maintaining numerical features
 
-    if False:
-
-        start = time.time()
-        model = DecisionTreeRegressor(max_depth=15,criterion="squared_error",splitter="random",max_features=100,random_state = 1)
-        model.fit(X_encoded, y)
-        model_predictions = model.predict(X_encoded)
-        end = time.time()
-        print(f"Time taken: {end-start} seconds")
-
-    if True:
-
-        min_rmse = float('inf')
-        min_mae = float('inf')
-        best_time = float('inf')
 
 
-        kf = KFold(n_splits=5, shuffle=True, random_state=1)
-        for i in range(20,101,10):
-            start = time.time()
-            model = DecisionTreeRegressor(max_depth=17,criterion="squared_error",splitter="best",max_features=250,min_samples_split=10,min_samples_leaf=60,ccp_alpha=400000000,random_state = 1)
-            predictions = []
-            for train_index, test_index in kf.split(X_encoded):
-                X_train, X_test = X_encoded.iloc[train_index], X_encoded.iloc[test_index]
-                y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+    
+    #cross validation to evaluate the model's performance using RMSE and MAE metrics, and also measuring the time taken for training and prediction
 
-                model.fit(X_train, y_train)
-                predictions.append(model.predict(X_test))
-            end = time.time()
-            time_taken = end - start
+    kf = KFold(n_splits=5, shuffle=True, random_state=1)
+    #splitting data into 5 folds for cross-validation, shuffling the data before splitting to ensure randomness
 
-            predictions = pd.concat(predictions).sort_index()
-            current_rmse = mse(y.values, predictions.values)**0.5
-            current_mae = mae(y.values, predictions.values)
-            print(i)
-            print(f"RMSE: {current_rmse}")
-            print(f"MAE: {current_mae}")
-            print(f"Time taken: {time_taken} seconds")
-            print("-----------------------------")
-            print(y.head())
-            print(predictions.head())
-            if current_rmse < min_rmse:
-                min_rmse = current_rmse
-                best_rmse = i
-            elif current_rmse == min_rmse and time_taken < best_time:
-                best_rmse = i
-                best_time = time_taken
-            if current_mae < min_mae:
-                min_mae = current_mae
-                best_mae = i
-            elif current_mae == min_mae and time_taken < best_time:
-                best_mae = i
-                best_time = time_taken
-        print(f"Best for RMSE: {best_rmse} with RMSE: {min_rmse}")
-        print(f"Best for MAE: {best_mae} with MAE: {min_mae}")
+    start = time.time()
+
+    model = DecisionTreeRegressor(max_depth=15,criterion="squared_error",splitter="best",max_features=250,min_samples_split=10,min_samples_leaf=2,ccp_alpha=400000000,random_state = 1)
+    predictions = []
+    for train_index, test_index in kf.split(X_encoded):
+        X_train, X_test = X_encoded.iloc[train_index], X_encoded.iloc[test_index]
+        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+
+        model.fit(X_train, y_train)
+        predictions.append(model.predict(X_test))
+        #cross validation
+
+    end = time.time()
+    time_taken = end - start
+
+    predictions = pd.concat(predictions).sort_index()
+    current_rmse = mse(y.values, predictions.values)**0.5
+    current_mae = mae(y.values, predictions.values)
+    target_mean = np.mean(y.values)
+    prediction_mean = np.mean(predictions.values)
+    percentage_mae = current_mae / target_mean * 100
+    percentage_rmse = current_rmse / target_mean * 100
+
+    print(f"RMSE: {current_rmse}")
+    print(f"MAE: {current_mae}")
+    print(f"Percentage MAE: {percentage_mae}%")
+    print(f"Percentage RMSE: {percentage_rmse}%")
+    print(f"Target mean: {target_mean}")
+    print(f"Prediction mean: {prediction_mean}")
+    print(f"Percentage difference: {abs(target_mean - prediction_mean)/target_mean*100:.2f}%")
+    print(f"Time taken: {time_taken} seconds")
+    print("-----------------------------")
+    errors = {10:0,20:0,30:0,40:0,50:0,60:0,70:0,80:0,90:0,100:0}
+    for prediction,target in zip(predictions.values,y.values):
+        error = float((abs(prediction-target)/target*100)[0])
+        errors[10*(int(error/10)+1) if error <100 else 100] += 1
+    for n in errors.keys():
+        print(f"Number of predictions with error between {n-10}% and {n}%: {errors[n]}")
+        print(f"Percentage of predictions with error between {n-10}% and {n}%: {errors[n]/len(y)*100:.2f}%")
+        print()
