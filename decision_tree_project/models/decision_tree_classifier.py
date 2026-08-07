@@ -1,39 +1,19 @@
 import random
 import pandas as pd
-import time
 import numpy as np
 from sklearn.model_selection import KFold
 
 
 
 
-def convert_memory(data):
-            if "TB" in data:
-                return  float(data[:-2]) * 1000
-            else:
-                return int(data[:-2])
-
-def mse(target, prediction):
-    #mean squared error
-    if isinstance(prediction,np.float64) or isinstance(target,np.float64):
-            return (target-prediction)**2
-    return sum([(x-y)**2 for x,y in zip(prediction,target)]) / len(prediction)
-
-def mae(target, prediction):
-    #mean absolute error
-    if isinstance(prediction,np.float64) or isinstance(target,np.float64):
-        return abs(target-prediction)
-    return sum([abs(x-y) for x,y in zip(prediction,target)])/len(prediction)
-
-
-
-class DecisionTreeRegressor:
-    def __init__(self,max_depth:int = None, criterion:str = "squared_error",splitter:str = "best",max_features = None,min_samples_split:int = 2,min_samples_leaf:int = 1,ccp_alpha:int = 0,random_state:int = 0):
+class DecisionTreeClassifier:
+    def __init__(self,max_depth:int = None, criterion:str = "gini",splitter:str = "best",max_features = None,min_samples_split:int = 2,min_samples_leaf:int = 1,ccp_alpha:int = 0,random_state:int = 0):
         self.left_child = None
         self.right_child = None
         self.split_feature = None
         self.split_value = None
-        self.value = None
+        self.highest_prob_class = None
+        self.highest_prob = 0
         self.skip_split = False
         self.current_error = None
         self.leaves = 0
@@ -48,25 +28,35 @@ class DecisionTreeRegressor:
         self.min_samples_split = min_samples_split
         self.min_samples_leaf = min_samples_leaf
         self.ccp_alpha = ccp_alpha
-    def __mse(self,data):
-        #mean squared error
-        try:
-            mean = sum(data)/len(data)
-            error_sum = sum([(x-mean)**2 for x in data])
+        random.seed(random_state)
+        #if parameters are given when initializing the class, they will be used to set the attributes of the DecisionTree Class,
+        #unless they are given when calling the fit method
 
-            return error_sum/len(data)
-        except:
-            return 0
-    def __mae(self,data):
-        #mean absolute error
-        try:
-            median = np.median(data)
-            error_sum = sum([abs(x-median) for x in data])
+    def __proba(self,target:pd.DataFrame,target_class):
+        if isinstance(target,str) or len(target) == 1:
+            return 1/len(target)
+        else:
+            return (target.squeeze() == target_class).sum() / len(target)
 
-            return error_sum/len(data)
-
-        except:
-            return 0
+        #calculating the probability of a given class in the target DataFrame
+    
+    def __gini(self,target):
+        if isinstance(target,str) or len(target) == 1:
+            classes = target
+        else:
+            classes = target.squeeze().unique()
+   
+        gini = 1 - sum([self.__proba(target,cls)**2 for cls in classes])
+        return gini
+        #calculating the Gini impurity of the target DataFrame
+    def __log_loss(self,target):
+        if isinstance(target,str) or len(target) == 1:
+            classes = target
+        else:
+            classes = target.squeeze().unique()
+        log_loss = -sum([self.__proba(target,cls) * np.log(self.__proba(target,cls)) for cls in classes])
+        return log_loss
+        #calculating the log loss of the target DataFrame
 
     def __ccp_helper(self):
         if self.left_child is not None and self.right_child is not None:
@@ -110,21 +100,29 @@ class DecisionTreeRegressor:
         min_samples_leaf = self.min_samples_leaf if min_samples_leaf is None else min_samples_leaf
         ccp_alpha = self.ccp_alpha if ccp_alpha is None else ccp_alpha
 
+
+
+        if len(target) == 1 or isinstance(target,str):
+            self.highest_prob_class = target.squeeze()
+        else:
+            self.highest_prob_class = target.squeeze().mode()[0]
+        self.highest_prob = self.__proba(target,self.highest_prob_class)  
+
+
+
         if max_features == "sqrt":
             max_features = int(round(np.sqrt(len(features.columns))))
         elif max_features == "log2":
             max_features = int(round(np.log2(len(features.columns))))
 
-        if criterion == "squared_error":
-            self.value = target.squeeze().mean()  
-            criterion_function = self.__mse                  
-        elif criterion == "absolute_error":
-            self.value = np.median(target.squeeze())
-            criterion_function = self.__mae
-
+        if criterion == "gini":
+            criterion_function = self.__gini                  
+        elif criterion == "log_loss":
+            criterion_function = self.__log_loss
         else:
-            raise ValueError("Invalid criterion. Use 'squared_error' or 'absolute_error'.")
+            raise ValueError("Invalid criterion. Use 'gini' or 'log_loss'.")
         #selecting the criterion function based on the given parameter
+
 
         random.seed(random_state)
         minimum_split_feature = None
@@ -134,12 +132,16 @@ class DecisionTreeRegressor:
         left_target = None
         right_target = None
         minimum_error = float('inf')
-        self.current_error = criterion_function(target.to_numpy().squeeze())
+        self.current_error = criterion_function(target.squeeze())
         self.samples = len(features)
         #setting up variables to record the best split's data
 
-        if self.samples < min_samples_split or max_depth == 1 or target.nunique() == 1:
+
+
+        if self.samples < min_samples_split or max_depth == 1:
             return
+
+
 
         feature_columns = list(features.columns)
         if max_features is not None:
@@ -149,20 +151,19 @@ class DecisionTreeRegressor:
         
 
 
-
         for feature in feature_columns:
 
             feature_data = sorted(features[feature].dropna().unique())
             #this list will be used to calculate the values of each split point
-
             if len(feature_data) == 1:
-                continue
-
+                continue 
+            #if there is only one value for the given feature, there would be no possible split, hence skiping this iteration
+            
             if splitter == "best":
                 feature_data.sort()
                 split_values = [(value1 + value2)/2 for value1,value2 in zip(feature_data[1:],feature_data[:-1])]
-            elif splitter == "random":
 
+            elif splitter == "random":
                 if set(feature_data).issubset({0, 1}):
                     split_values = [0.5]
                 #if the feature is binary, the only split point will be 0.5
@@ -189,8 +190,8 @@ class DecisionTreeRegressor:
                         right_data = pd.concat([right_data,nan_data])
 
 
-                    left_target = target.loc[left_data.index]
-                    right_target = target.loc[right_data.index]
+                    left_target = pd.DataFrame(target.loc[left_data.index], index=left_data.index)
+                    right_target = pd.DataFrame(target.loc[right_data.index], index=right_data.index)
                     #splitting the data into left and right based on the split point
 
                     if len(left_target) < min_samples_leaf or len(right_target) < min_samples_leaf:
@@ -198,7 +199,7 @@ class DecisionTreeRegressor:
                     #if the length of samples in one of the leafs is less than min_samples_leaf parameter, then it won't be considered
 
 
-                    error = criterion_function(left_target.to_numpy().squeeze()) * len(left_target) + criterion_function(right_target.to_numpy().squeeze()) * len(right_target)
+                    error = criterion_function(left_target.squeeze()) * len(left_target) + criterion_function(right_target.squeeze()) * len(right_target)
                     #calculating the error of the split point based on the criterion function
 
                     if error < minimum_error and error < self.current_error*self.samples:
@@ -224,8 +225,8 @@ class DecisionTreeRegressor:
             self.split_value = minimum_split_value
             
             
-            self.left_child = DecisionTreeRegressor()
-            self.right_child = DecisionTreeRegressor()
+            self.left_child = DecisionTreeClassifier()
+            self.right_child = DecisionTreeClassifier()
 
             if pd.isna(max_depth):
                 self.left_child.fit(minimum_left_data, minimum_left_target,criterion=criterion,
@@ -248,7 +249,7 @@ class DecisionTreeRegressor:
     def __row_predict(self,row:pd.DataFrame):
 
         if self.split_feature is None:
-            return self.value            
+            return self.highest_prob_class           
         elif row[self.split_feature] <= self.split_value or (pd.isna(row[self.split_feature]) and self.null_direction == "left"):
             return self.left_child.__row_predict(row)
         elif row[self.split_feature] > self.split_value or (pd.isna(row[self.split_feature]) and self.null_direction == "right"):
@@ -260,145 +261,64 @@ class DecisionTreeRegressor:
         predictions = {i: self.__row_predict(features.loc[i]) for i in features.index}
         return pd.DataFrame(predictions.values(), index=predictions.keys())    
         #predict the values for all rows in the given features DataFrame by calling __row_predict for each row
-
-
-if __name__ == "__main__":
-    data = pd.read_csv("decision_tree_project/data/laptop_data.csv")
-
-    screen_type = []
-    resolution = []
-    for resolution_data in data["ScreenResolution"]:
-        resolution_data = resolution_data.split(" ")
-        resolution_amount = resolution_data[-1].split("x")
-
-        if len(resolution_data) == 1:
-            screen_type.append(None)
-        else:
-            screen_type.append(" ".join(resolution_data[:-1]))
-
-        resolution.append(int(resolution_amount[0])*int(resolution_amount[1]))
-
-    cpu_type = []
-    cpu_frequency = []
-    for cpu_data in data["Cpu"]:
-        cpu_type_data = cpu_data.split(" ")
-        cpu_type.append(" ".join(cpu_type_data[:-1]))
-        cpu_frequency.append(float(cpu_type_data[-1][:-3]))
-
-
-    ram_size = []
-    for ram_data in data["Ram"]:
-        ram_size.append(int(ram_data[:-2]))
-
-    weight = []
-    for weight_data in data["Weight"]:
-        weight.append(float(weight_data[:-2]))
-
-
-    memory_size = []
-    memory_type = []
-    additional_memory = []
-    add_memory_size = []
-    add_memory_type = []
-
-    for memory_data in data["Memory"]:
-        if "+" in memory_data:
-            additional_memory.append("True")
-
-            memory_data, add_memory_data = memory_data.split("+")
-
-            memory_data = memory_data.strip().split(" ")
-            add_memory_data = add_memory_data.strip().split(" ")
-
-            memory_size.append(convert_memory(memory_data[0]))
-            memory_type.append(" ".join(memory_data[1:]))
-            add_memory_size.append(convert_memory(add_memory_data[0]))
-            add_memory_type.append(" ".join(add_memory_data[1:]))
-
-        else:
-            additional_memory.append("False")
-            memory_data = memory_data.split(" ")
-            
-            memory_size.append(convert_memory(memory_data[0]))
-            memory_type.append(" ".join(memory_data[1:]))
-            add_memory_size.append(None)
-            add_memory_type.append(None)
-
-
-    data["ScreenType"] = screen_type
-    data["Resolution"] = resolution
-    data["CpuType"] = cpu_type
-    data["CpuFrequency"] = cpu_frequency
-    data["RamSize"] = ram_size
-    data["MemorySize"] = memory_size
-    data["MemoryType"] = memory_type
-    data["AdditionalMemory"] = additional_memory
-    data["AdditionalMemorySize"] = add_memory_size
-    data["AdditionalMemoryType"] = add_memory_type
-    data["WeightInt"] = weight
-    #In the code above, I handled data so that I could quantify some of the features such as Resolution, CpuFrequency, RamSize, etc.
-    #while maintaining some categorical features, such as ScreenType, CpuType, MemoryType, etc.
-
-    features = ["Company", "TypeName", "Inches", "ScreenType","Resolution", "RamSize", "MemorySize","MemoryType",
-                "AdditionalMemory","AdditionalMemorySize","AdditionalMemoryType", "WeightInt", "CpuType","CpuFrequency", "Gpu", "OpSys"]
-
-    X = data[features]
-    y = data["Price"]
-    X_encoded = pd.get_dummies(X, columns=["Company","TypeName","ScreenType","MemoryType","AdditionalMemory","AdditionalMemoryType","CpuType","Gpu","OpSys"])
-    #encoding categorical features, while maintaining numerical features
-
-
-
     
-    #cross validation to evaluate the model's performance using RMSE and MAE metrics, and also measuring the time taken for training and prediction
+
+if False:#__name__ == "__main__":
+    data = pd.read_csv("decision_tree_project/data/gender_classification_v7.csv")
+    
+
+    X = data.drop(columns=["gender"])
+    y = data["gender"]
+
+
+
 
     kf = KFold(n_splits=5, shuffle=True, random_state=1)
-    #splitting data into 5 folds for cross-validation, shuffling the data before splitting to ensure randomness
-
-    start = time.time()
-
-    
     predictions = []
-    for train_index, test_index in kf.split(X_encoded):
-
-        X_train, X_test = X_encoded.iloc[train_index], X_encoded.iloc[test_index]
-        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
-
-        model = DecisionTreeRegressor(max_depth=15,criterion="absolute_error",splitter="best",max_features=250,min_samples_split=60,min_samples_leaf=20,ccp_alpha=15000,random_state = 1)
+    for train_index, test_index in kf.split(X):
+    
+        X_train, X_test = X.loc[train_index], X.loc[test_index]
+        y_train, y_test = y.loc[train_index], y.loc[test_index]
+    
+        model = DecisionTreeClassifier(max_depth=15,criterion="gini",splitter="best")
         model.fit(X_train, y_train)
         predictions.append(model.predict(X_test))
-        #cross validation
-
-    end = time.time()
-    time_taken = end - start
-
     predictions = pd.concat(predictions).sort_index()
-    current_rmse = mse(y.values, predictions.values)**0.5
-    current_mae = mae(y.values, predictions.values)
-    target_mean = np.mean(y.values)
-    prediction_mean = np.mean(predictions.values)
-    percentage_mae = current_mae / target_mean * 100
-    percentage_rmse = current_rmse / target_mean * 100
+    #cross validation
 
-    print(f"RMSE: {current_rmse}")
-    print(f"MAE: {current_mae}")
-    print(f"Percentage MAE: {percentage_mae}%")
-    print(f"Percentage RMSE: {percentage_rmse}%")
-    print(f"Target mean: {target_mean}")
-    print(f"Prediction mean: {prediction_mean}")
-    print(f"Percentage difference: {abs(target_mean - prediction_mean)/target_mean*100:.2f}%")
-    print(f"Time taken: {time_taken} seconds")
-    print("-----------------------------")
-    errors = {10:0,20:0,30:0,40:0,50:0,60:0,70:0,80:0,90:0,100:0,">100":0}
-    for prediction,target in zip(predictions.values,y.values):
-        error = float((abs(prediction-target)/target*100)[0])
-        errors[10*(int(error/10)+1) if error <100 else ">100"] += 1
-    for n in errors.keys():
-        if n == ">100":
-            print(f"Number of predictions with error greater than 100%: {errors[n]}")
-            print(f"Percentage of predictions with error greater than 100%: {errors[n]/len(y)*100:.2f}%")
-            print()
-            continue
-        print(f"Number of predictions with error between {n-10}% and {n}%: {errors[n]}")
-        print(f"Percentage of predictions with error between {n-10}% and {n}%: {errors[n]/len(y)*100:.2f}%")
-        print()
+    accuracy_helper = 0
+    for y_value,pred in zip(y.values,predictions.values):       
+        if y_value == pred:
+            accuracy_helper += 1
+    accuracy = accuracy_helper / len(y)
+    print(f"Accuracy: {accuracy:.4f}")
+
+if __name__ == "__main__":
+    data = pd.read_csv("decision_tree_project/data/Obesity_Classification.csv")
+
+    X = data.drop(columns=["Label","ID"])
+    y = data["Label"]
+
+    X_encoded = pd.get_dummies(X)
+
+    kf = KFold(n_splits=5, shuffle=True, random_state=1)
+    predictions = []
+    for train_index, test_index in kf.split(X_encoded):
+    
+        X_train, X_test = X_encoded.loc[train_index], X_encoded.loc[test_index]
+        y_train, y_test = y.loc[train_index], y.loc[test_index]
+    
+        model = DecisionTreeClassifier(max_depth=15,criterion="gini",splitter="best")
+        model.fit(X_train, y_train)
+        predictions.append(model.predict(X_test))
+    predictions = pd.concat(predictions).sort_index()
+    #cross validation
+
+    accuracy_helper = 0
+    for y_value,pred in zip(y.values,predictions.values):       
+        if y_value == pred:
+            accuracy_helper += 1
+    accuracy = accuracy_helper / len(y)
+    print(f"Accuracy: {accuracy:.4f}")
+
+    
