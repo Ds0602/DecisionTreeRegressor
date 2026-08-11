@@ -2,6 +2,12 @@ MODEL: Decision Tree Regressor
 
 TEST: Cross Validation (Splitting data into 5 folds)
 
+DATASET: laptop_data.csv
+min = 9270.72
+max = 324954.72
+mean = 59870.04
+length = 1303
+
 PARAMETERS:
 max_depth = 15
 criterion = "squared_error"
@@ -12,11 +18,7 @@ min_samples_leaf = 2
 ccp_alpha = 400 000 000
 random_state = 1
 
-DATASET:
-min = 9270.72
-max = 324954.72
-mean = 59870.04
-length = 1303
+
 
 RESULTS:
 rmse = 18557.54
@@ -26,7 +28,7 @@ mae% = 19.21%
 prediction_mean = 59543.79
 mean_difference% = 0.54%
 time taken = 147.30 seconds
-time taken per iteration = 147.30 / 5 = 29.46 seconds
+time taken per iteration = 29.46 seconds
 
 Absolute Error / frequency / percentage frequency / accumulated percentage frequency
 0% - 10%:        449         34.46%                 34.46%
@@ -41,7 +43,7 @@ Absolute Error / frequency / percentage frequency / accumulated percentage frequ
 90%-100%:        3           0.23%                  99.31%
 >100%:           9           0.69%                  100.00%
 
-OBSERVATION:
+OBSERVATIONS:
 - The model achieved a reasonably good performance, with a mean absolute error of 19.21% < 20%, 
   though high rmse (31.00%) means that there are occasionally very inaccurate predictions (outliers).
 - 62.24% of predictions were accurate (error < 20%), while 27.17% had moderate error (20% - 40%).
@@ -49,3 +51,29 @@ OBSERVATION:
 - By applying pre-pruning and post-pruning techniques (e.g., limiting max_features, min_samples_split), 
   the model focuses on general patterns while avoiding noise, thereby reducing overfitting and improving generalization.
 - The time taken (~30 seconds per iteration) is relatively high for this dataset size, suggesting potential room for optimization
+
+MODEL: Decision Tree Classifier
+
+TEST: Cross Validation (Splitting data into 5 folds)
+
+DATASET: Obesity_Classification.csv
+length = 5001
+classes: "Male", "Female"
+
+PARAMETERS:
+max_depth = 10
+criterion = "log_loss"
+splitter = "best"
+min_samples_split = 10
+min_samples_leaf = 2
+ccp_alpha = 0.001
+
+RESULTS:
+accuracy = 93.06%
+time taken = 1175.05 seconds
+time taken per iteration = 235.01 seconds
+
+OBSERVATIONS:
+- The model achieved good results, with high accuracy (93.06%).
+- However, it is even more noticeable the algorithms inneficiency, as each iteration took around 4 minutes (235.01 seconds).
+
