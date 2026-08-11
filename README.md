@@ -1,6 +1,6 @@
 # Decision Tree (From Scratch)
 
-This project is a basic implementation of decision trees built from scratch using Python. It does not rely on libraries like `scikit-learn` for the model itself, and is mainly for learning and experimentation purposes.
+This project implements decision trees built from scratch using Python. It does not rely on libraries like `scikit-learn` for the model itself, and is mainly for learning and experimentation purposes. 
 
 ## Models
 * Decision tree regressor
