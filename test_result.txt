@@ -56,9 +56,9 @@ MODEL: Decision Tree Classifier
 
 TEST: Cross Validation (Splitting data into 5 folds)
 
-DATASET: gender_classification_v7.csv
-length = 5001
-classes: "Male", "Female"
+DATASET: credit_risk_dataset.csv
+length = 32581
+class: 0,1 ("loan_status")
 
 PARAMETERS:
 max_depth = 10
@@ -76,4 +76,3 @@ time taken per iteration = 235.01 seconds
 OBSERVATIONS:
 - The model achieved good results, with high accuracy (93.06%).
 - However, it is even more noticeable the algorithms inneficiency, as each iteration took around 4 minutes (235.01 seconds).
-
