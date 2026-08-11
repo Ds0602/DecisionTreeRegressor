@@ -39,7 +39,7 @@ class DecisionTreeRegressor:
         self.leaves = 0
         self.samples = 0
         self.null_direction = None
-        #defining the attributes of the DecisionTree class, including left and right child nodes, split feature and value, node value, and a flag for single-value features
+        #defining the attributes of the DecisionTree class, including left and right child nodes, split feature and value, node value
 
         self.max_depth = max_depth
         self.criterion = criterion
@@ -48,24 +48,36 @@ class DecisionTreeRegressor:
         self.min_samples_split = min_samples_split
         self.min_samples_leaf = min_samples_leaf
         self.ccp_alpha = ccp_alpha
+        self.random_state = random_state
+        #if parameters are given when initializing the class, they will be used to set the attributes of the DecisionTree Class,
+        #unless they are given when calling the fit method
+    def __is_iterable(self,variable):
+        try:
+            iter(variable)
+            if isinstance(variable,pd.DataFrame) and len(variable) == 1:
+                return False
+            return not isinstance(variable,(str,bytes,np.int64))
+        except TypeError:
+            return False
+        #helper method used to test if a variable is iterable
     def __mse(self,data):
         #mean squared error
-        try:
+        if  self.__is_iterable(data):
             mean = sum(data)/len(data)
             error_sum = sum([(x-mean)**2 for x in data])
 
             return error_sum/len(data)
-        except:
+        else:
             return 0
     def __mae(self,data):
         #mean absolute error
-        try:
+        if  self.__is_iterable(data):
             median = np.median(data)
             error_sum = sum([abs(x-median) for x in data])
 
             return error_sum/len(data)
 
-        except:
+        else:
             return 0
 
     def __ccp_helper(self):
@@ -85,16 +97,15 @@ class DecisionTreeRegressor:
         #cost complexity pruning
         if self.left_child is not None and self.right_child is not None:
 
+            sub_tree_error,leaf_num = self.__ccp_helper()
+            
             self.left_child.__ccp(ccp_alpha)
             self.right_child.__ccp(ccp_alpha)
             #prune children first
 
-            sub_tree_error,leaf_num = self.__ccp_helper()
-            if leaf_num <= 1:
-                return #avoiding bugs
             
             current_alpha = (self.current_error*self.samples - sub_tree_error) / (leaf_num - 1)
-            if current_alpha <= ccp_alpha:
+            if current_alpha < ccp_alpha:
                 self.left_child = None
                 self.right_child = None
                 self.split_feature = None
@@ -109,11 +120,8 @@ class DecisionTreeRegressor:
         min_samples_split = self.min_samples_split if min_samples_split is None else min_samples_split
         min_samples_leaf = self.min_samples_leaf if min_samples_leaf is None else min_samples_leaf
         ccp_alpha = self.ccp_alpha if ccp_alpha is None else ccp_alpha
-
-        if max_features == "sqrt":
-            max_features = int(round(np.sqrt(len(features.columns))))
-        elif max_features == "log2":
-            max_features = int(round(np.log2(len(features.columns))))
+        random_state = self.random_state if random_state is None else random_state
+        #use the parameters if they were given when calling the fit method, else use the parameters which were given when creating the tree
 
         if criterion == "squared_error":
             self.value = target.squeeze().mean()  
@@ -121,10 +129,9 @@ class DecisionTreeRegressor:
         elif criterion == "absolute_error":
             self.value = np.median(target.squeeze())
             criterion_function = self.__mae
-
         else:
             raise ValueError("Invalid criterion. Use 'squared_error' or 'absolute_error'.")
-        #selecting the criterion function based on the given parameter
+        #selecting the criterion function and calculating the node's value based on the given parameter
 
         random.seed(random_state)
         minimum_split_feature = None
@@ -140,16 +147,21 @@ class DecisionTreeRegressor:
 
         if self.samples < min_samples_split or max_depth == 1 or target.nunique() == 1:
             return
+        #if restrictions are met, stop splitting
 
-        feature_columns = list(features.columns)
+
+
+        if max_features == "sqrt":
+            max_features = int(round(np.sqrt(len(features.columns))))
+        elif max_features == "log2":
+            max_features = int(round(np.log2(len(features.columns))))
+        #if max_features parameter is set to "sqrt" or "log2", calculate max_features based on total length of the dataset
+        feature_columns = list(features.columns)        
         if max_features is not None:
             random.shuffle(feature_columns)
             feature_columns = feature_columns[:max_features]
         #if it is given a max_features parameter, it will randomly select that number of features to consider
         
-
-
-
         for feature in feature_columns:
 
             feature_data = sorted(features[feature].dropna().unique())
@@ -157,12 +169,12 @@ class DecisionTreeRegressor:
 
             if len(feature_data) == 1:
                 continue
+            #if there is only one value for the feature there would be no valid split
 
             if splitter == "best":
                 feature_data.sort()
                 split_values = [(value1 + value2)/2 for value1,value2 in zip(feature_data[1:],feature_data[:-1])]
             elif splitter == "random":
-
                 if set(feature_data).issubset({0, 1}):
                     split_values = [0.5]
                 #if the feature is binary, the only split point will be 0.5
@@ -180,18 +192,18 @@ class DecisionTreeRegressor:
 
                 left_data = features[features[feature] <= split_value]
                 right_data = features[features[feature] > split_value]
-
                 nan_data = features[pd.isna(features[feature])]
+                #splitting data into left_data, right_data and nan_data if there are nan values
                 for null_direction in ["left","right"]:
                     if null_direction == "left":
                         left_data = pd.concat([left_data,nan_data])
                     elif null_direction == "right":
                         right_data = pd.concat([right_data,nan_data])
-
+                    #try out which direction would be better for samples with nan values
 
                     left_target = target.loc[left_data.index]
                     right_target = target.loc[right_data.index]
-                    #splitting the data into left and right based on the split point
+                    #dividing target into left and right target
 
                     if len(left_target) < min_samples_leaf or len(right_target) < min_samples_leaf:
                         continue
@@ -219,6 +231,8 @@ class DecisionTreeRegressor:
 
         if minimum_split_feature is None:
             return 
+        #if no split was found, return
+
         elif max_depth is None or max_depth > 1:
             self.split_feature = minimum_split_feature
             self.split_value = minimum_split_value
@@ -243,7 +257,7 @@ class DecisionTreeRegressor:
             raise ValueError("ccp_alpha must be greater than 0")
         elif ccp_alpha > 0:
             self.__ccp(ccp_alpha)
-        
+        #cost complexity pruning
 
     def __row_predict(self,row:pd.DataFrame):
 
