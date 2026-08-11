@@ -14,7 +14,7 @@ This project implements decision trees built from scratch using Python. It does 
     * Mean Squared Error (`squared_error`)
     * Mean Absolute Error (`absolute_error`)
   * Classification:
-    * Gini entropy (`gini`)
+    * Gini impurity (`gini`)
     * Log loss (`log_loss`)
 * Two splitting strategies:
 
