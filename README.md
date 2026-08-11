@@ -1,13 +1,21 @@
-# Decision Tree Regressor (From Scratch)
+# Decision Tree (From Scratch)
 
-This project is a basic implementation of a Decision Tree Regressor built from scratch using Python. It does not rely on libraries like `scikit-learn` for the model itself, and is mainly for learning and experimentation purposes.
+This project is a basic implementation of decision trees built from scratch using Python. It does not rely on libraries like `scikit-learn` for the model itself, and is mainly for learning and experimentation purposes.
+
+## Models
+* Decision tree regressor
+* Decision tree classificator
+* Random forest regressor
 
 ## Features
 
 * Supports regression using:
-
-  * Mean Squared Error (`squared_error`)
-  * Mean Absolute Error (`absolute_error`)
+  * Regression:
+    * Mean Squared Error (`squared_error`)
+    * Mean Absolute Error (`absolute_error`)
+  * Classification:
+    * Gini entropy (`gini`)
+    * Log loss (`log_loss`)
 * Two splitting strategies:
 
   * `best` (checks all possible split points)
@@ -26,18 +34,17 @@ This project is a basic implementation of a Decision Tree Regressor built from s
 
 ## How It Works
 
-The model builds a binary tree by recursively splitting the dataset based on the feature and split value that minimizes error.
+Decision tree models build a binary tree by recursively splitting the dataset based on the feature and split value that minimizes error.
 
 Each node:
 
-* Stores a prediction value (mean or median of target)
+* Stores a prediction value (Regression: mean or median of target/Classification: most probable class)
 * Chooses the best split based on the selected criterion
 * Stops splitting based on conditions like depth or sample size
 
 Pruning is done after training using cost-complexity pruning.
 
-## Usage
-
+## Usage example
 ```python
 from decision_tree_regressor import DecisionTreeRegressor
 
@@ -58,7 +65,7 @@ model.fit(
 ## Parameters
 
 * `max_depth`: Maximum depth of the tree
-* `criterion`: `"squared_error"` or `"absolute_error"`
+* `criterion`: Regression: `"squared_error"` or `"absolute_error"` Classification: `"gini"` or `"log_loss"`
 * `splitter`: `"best"` or `"random"`
 * `max_features`: Number of features to consider at each split
 * `min_samples_split`: Minimum samples required to split
@@ -80,17 +87,29 @@ model.fit(
 
 ## Dataset
 
-The dataset used in this project comes from Kaggle.
+The datasets used in this project come from Kaggle.
 
 * Source: Kaggle laptop dataset
-* File used: `data/laptop_data (1).csv`
-*link: https://www.kaggle.com/datasets/muhammadmusharraf444/laptop-specifications-and-price-prediction-dataset/data
+* File used: `decision_tree_project/data/laptop_data.csv`
+* link: https://www.kaggle.com/datasets/muhammadmusharraf444/laptop-specifications-and-price-prediction-dataset/data
+
+* Source: Kaggle Obesity classification dataset
+* File used: `decision_tree_project/data/Obesity_Classification.csv`
+* link: https://www.kaggle.com/datasets/sujithmandala/obesity-classification-dataset
+
+* Source: Kaggle gender classification dataset
+* File used: `decision_tree_project/data/gender_classification.csv`
+* link: https://www.kaggle.com/datasets/elakiricoder/gender-classification-dataset
+
+* Source: Kaggle credit risk dataset
+* File used: `decision_tree_project/data/credit_risk_dataset.csv`
+* link: https://www.kaggle.com/datasets/laotse/credit-risk-dataset
 
 
-## File
+## Folders
 
-* `decision_tree_regressor.py`: main implementation
-* `laptop_data (1).csv`: data set used for testing
+* `models`: main implementation of decision trees
+* `data`: folder where datasets are
 
 ## License
 
