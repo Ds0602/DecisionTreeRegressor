@@ -90,20 +90,20 @@ model.fit(
 The datasets used in this project come from Kaggle.
 
 * Source: Kaggle laptop dataset
-* File used: `decision_tree_project/data/laptop_data.csv`
-* link: https://www.kaggle.com/datasets/muhammadmusharraf444/laptop-specifications-and-price-prediction-dataset/data
+ * File used: `decision_tree_project/data/laptop_data.csv`
+ * link: https://www.kaggle.com/datasets/muhammadmusharraf444/laptop-specifications-and-price-prediction-dataset/data
  
 * Source: Kaggle Obesity classification dataset
-* File used: `decision_tree_project/data/Obesity_Classification.csv`
-* link: https://www.kaggle.com/datasets/sujithmandala/obesity-classification-dataset
+ * File used: `decision_tree_project/data/Obesity_Classification.csv`
+ * link: https://www.kaggle.com/datasets/sujithmandala/obesity-classification-dataset
  
 * Source: Kaggle gender classification dataset
-* File used: `decision_tree_project/data/gender_classification.csv`
-* link: https://www.kaggle.com/datasets/elakiricoder/gender-classification-dataset
+ * File used: `decision_tree_project/data/gender_classification.csv`
+ * link: https://www.kaggle.com/datasets/elakiricoder/gender-classification-dataset
  
 * Source: Kaggle credit risk dataset
-* File used: `decision_tree_project/data/credit_risk_dataset.csv`
-* link: https://www.kaggle.com/datasets/laotse/credit-risk-dataset
+ * File used: `decision_tree_project/data/credit_risk_dataset.csv`
+ * link: https://www.kaggle.com/datasets/laotse/credit-risk-dataset
 
 
 ## Folders
