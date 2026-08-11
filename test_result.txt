@@ -3,9 +3,9 @@ MODEL: Decision Tree Regressor
 TEST: Cross Validation (Splitting data into 5 folds)
 
 DATASET: laptop_data.csv
-min = 9270.72
-max = 324954.72
-mean = 59870.04
+target min = 9270.72
+target max = 324954.72
+target mean = 59870.04
 length = 1303
 
 PARAMETERS:
@@ -18,13 +18,11 @@ min_samples_leaf = 2
 ccp_alpha = 400 000 000
 random_state = 1
 
-
-
 RESULTS:
 rmse = 18557.54
 mae = 11503.43
-rmse% = 31.00%
-mae% = 19.21%
+rmse% (in relation to target mean) = 31.00%
+mae% (in relation to target mean) = 19.21%
 prediction_mean = 59543.79
 mean_difference% = 0.54%
 time taken = 147.30 seconds
@@ -52,6 +50,8 @@ OBSERVATIONS:
   the model focuses on general patterns while avoiding noise, thereby reducing overfitting and improving generalization.
 - The time taken (~30 seconds per iteration) is relatively high for this dataset size, suggesting potential room for optimization
 
+
+
 MODEL: Decision Tree Classifier
 
 TEST: Cross Validation (Splitting data into 5 folds)
@@ -76,3 +76,99 @@ time taken per iteration = 235.01 seconds
 OBSERVATIONS:
 - The model achieved good results, with high accuracy (93.06%).
 - However, it is even more noticeable the algorithms inneficiency, as each iteration took around 4 minutes (235.01 seconds).
+
+
+
+MODEL: Random Forest Regressor
+
+TEST: Cross Validation (Splitting data into 5 folds)
+
+DATASET: laptop_data.csv
+target min = 9270.72
+target max = 324954.72
+target mean = 59870.04
+length = 1303
+
+PARAMETERS:
+size = 4
+max_depth = 17
+criterion = "squared_error"
+splitter = "best"
+random_state = 1
+
+RESULTS:
+rmse = 17643.88
+mae = 11358.48
+rmse% (in relation to target mean) = 29.47%
+mae% (in relation to target mean) = 18.97%
+prediction_mean = 59762.80
+mean_difference% = 0.18%
+time taken = 227.47 seconds
+time taken per iteration = 45.59 seconds
+
+Absolute Error / frequency / percentage frequency / accumulated percentage frequency
+0% - 10%:        473         36.30%                 36.30%
+10% - 20%:       336         25.79%                 62.09%
+20% - 30%:       217         16.65%                 78.74%
+30% - 40%:       131         10.05%                 88.79%
+40% - 50%:       56          4.30%                  93.09%
+50% - 60%:       38          2.92%                  96.01%
+60% - 70%:       19          1.46%                  97.47%
+70% - 80%:       7           0.54%                  98.01%
+80% - 90%:       8           0.61%                  99.70%
+90%-100%:        6           0.46%                  99.01%
+>100%:           12          0.92%                  100.00%
+
+OBSERVATIONS:
+- After some tests, it appeared that a big random forest without any restrictions (min_samples_split, min_samples_leaf, etc.) would give low error. In comparison to a single decision tree regressor, the random forest's predictions decreased error slightly (example: rmse 18557.54 -> 17643.88 and mae 11503.43 -> 11358.48).
+- The results also indicate that random forests could behave better with higher max_depth compared to decision trees (with this dataset, the decision tree behaved optimally with max_depth=15 while random forest with size=4 behaved optimally with max_depth=17). This could be due to each tree's prediction nullifying other trees' overfitted prediction, hence reducing overfitting. 
+- The time taken to fit and predict was slightly higher, which is a reasonable outcome as a decision tree consists on various trees, and a higher depth.
+
+
+
+MODEL: Random Forest Regressor
+
+TEST: Cross Validation (Splitting data into 5 folds)
+
+DATASET: laptop_data.csv
+target min = 9270.72
+target max = 324954.72
+target mean = 59870.04
+length = 1303
+
+PARAMETERS:
+size = 2
+max_depth = 16
+criterion = "squared_error"
+splitter = "best"
+min_samples_split = 10
+min_samples_leaf = 2
+ccp_alpha = 10000000
+random_state = 1
+
+RESULTS:
+rmse = 17663.85
+mae = 11206.95
+rmse% (in relation to target mean) = 29.50%
+mae% (in relation to target mean) = 18.72%
+prediction_mean = 59133.63
+mean_difference% = 1.23%
+time taken = 184.47 seconds
+time taken per iteration = 36.89 seconds
+
+Absolute Error / frequency / percentage frequency / accumulated percentage frequency
+0% - 10%:        464         35.61%                 35.61%
+10% - 20%:       376         28.86%                 64.47%
+20% - 30%:       204         15.66%                 80.13%
+30% - 40%:       128         9.82%                  89.95%
+40% - 50%:       60          4.60%                  94.55%
+50% - 60%:       31          2.38%                  96.93%
+60% - 70%:       13          1.00%                  97.93%
+70% - 80%:       7           0.54%                  98.47%
+80% - 90%:       4           0.31%                  98.78%
+90%-100%:        5           0.38%                  99.16%
+>100%:           11          0.84%                  100.00%
+
+OBSERVATIONS:
+- In another test with restrictions and lower size, the model reached a lower mae (11206.95) with a slightly higher rmse (17663.85). It seems like restricted and lower sized random forests behave more similarly to decision trees, being benefited from restrictions. Another evidence that small random forests behave like a misture of large random forests and single decision trees, is that the optimal max_depth value is also between their respective values.
+- Besides that, the higher rmse indicates that there were more outliers. A reasonable explanation is that, as random forests' predictions result by averaging predictions of smaller trees, forests with bigger size tend to resist outliers.
