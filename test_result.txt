@@ -121,8 +121,8 @@ Absolute Error / frequency / percentage frequency / accumulated percentage frequ
 
 OBSERVATIONS:
 - After some tests, it appeared that a big random forest without any restrictions (min_samples_split, min_samples_leaf, etc.) would give low error. In comparison to a single decision tree regressor, the random forest's predictions decreased error slightly (example: rmse 18557.54 -> 17643.88 and mae 11503.43 -> 11358.48).
-- The results also indicate that random forests could behave better with higher max_depth compared to decision trees (with this dataset, the decision tree behaved optimally with max_depth=15 while random forest with size=4 behaved optimally with max_depth=17). This could be due to each tree's prediction nullifying other trees' overfitted prediction, hence reducing overfitting. 
-- The time taken to fit and predict was slightly higher, which is a reasonable outcome as a decision tree consists on various trees, and a higher depth.
+- The results also indicate that random forests could behave better with higher max_depth compared to decision trees (with this dataset, the decision tree behaved optimally with max_depth=15 while random forest with size=4 behaved optimally with max_depth=17). This could be due to random forests reducing variance by averaging predictions from multiple trees. Individual trees may overfit, but averaging their outputs produces more stable predictions.
+- The time taken to fit and predict was slightly higher, which is a reasonable outcome as a random forest consists of multiple decision trees, and it was given a higher max_depth value.
 
 
 
@@ -171,4 +171,3 @@ Absolute Error / frequency / percentage frequency / accumulated percentage frequ
 
 OBSERVATIONS:
 - In another test with restrictions and lower size, the model reached a lower mae (11206.95) with a slightly higher rmse (17663.85). It seems like restricted and lower sized random forests behave more similarly to decision trees, being benefited from restrictions. Another evidence that small random forests behave like a misture of large random forests and single decision trees, is that the optimal max_depth value is also between their respective values.
-- Besides that, the higher rmse indicates that there were more outliers. A reasonable explanation is that, as random forests' predictions result by averaging predictions of smaller trees, forests with bigger size tend to resist outliers.
