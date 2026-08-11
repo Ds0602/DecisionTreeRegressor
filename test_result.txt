@@ -56,7 +56,7 @@ MODEL: Decision Tree Classifier
 
 TEST: Cross Validation (Splitting data into 5 folds)
 
-DATASET: Obesity_Classification.csv
+DATASET: gender_classification_v7.csv
 length = 5001
 classes: "Male", "Female"
 
