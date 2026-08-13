@@ -354,7 +354,7 @@ if __name__ == "__main__":
         X_train, X_test = X_encoded.loc[train_index], X_encoded.loc[test_index]
         y_train, y_test = y.loc[train_index], y.loc[test_index]
     
-        model = DecisionTreeClassifier(max_depth=10,criterion="log_loss",splitter="best",min_samples_split=10,min_samples_leaf=2,ccp_alpha=0.0001)
+        model = DecisionTreeClassifier(max_depth=10,criterion="log_loss",splitter="best",min_samples_split=10,min_samples_leaf=2,ccp_alpha=0.001)
         model.fit(X_train, y_train)
         predictions.append(model.predict(X_test))
     end = time.time()
@@ -362,9 +362,29 @@ if __name__ == "__main__":
     #cross validation
 
     accuracy_helper = 0
+    true_positive = 0
+    true_negative = 0
+    false_positive = 0
+    false_negative = 0
     for y_value,pred in zip(y.values,predictions.values):       
         if y_value == pred:
             accuracy_helper += 1
+        if y_value == 0:
+            if pred == 0:
+                true_negative += 1
+            elif pred == 1:
+                false_positive += 1
+        elif y_value == 1:
+            if pred == 1:
+                true_positive += 1
+            elif pred == 0:
+                false_negative += 1
     accuracy = accuracy_helper / len(y)
+    precision = true_positive / (true_positive + false_positive)
+    recall = true_positive / (true_positive + false_negative)
+    f1_score = 2 * (precision * recall) / (precision + recall)
     print(f"Accuracy: {accuracy:.4f}")
+    print(f"Precision: {precision:.4f}")
+    print(f"Recall: {recall:.4f}")
+    print(f"F1 score:  {f1_score:.4f}")
     print(f"Time spent: {end-start}")   

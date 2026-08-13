@@ -147,7 +147,7 @@ if __name__ == "__main__":
         X_train, X_test = X_encoded.iloc[train_index], X_encoded.iloc[test_index]
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
 
-        model = RandomForestRegressor(size=4,max_depth=15,criterion="squared_error",splitter="best",random_state = 1)
+        model = RandomForestRegressor(size=4,max_depth=17,criterion="squared_error",splitter="best",random_state=1)#min_samples_split=10,min_samples_leaf=2,ccp_alpha = 10000000,random_state = 1)
         model.fit(X_train, y_train)
         predictions.append(model.predict(X_test))
         #cross validation
