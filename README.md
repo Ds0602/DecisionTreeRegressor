@@ -4,8 +4,9 @@ This project implements decision trees built from scratch using Python. It does 
 
 ## Models
 * Decision tree regressor
-* Decision tree classificator
+* Decision tree classifier
 * Random forest regressor
+* Random forest classifier
 
 ## Features
 
