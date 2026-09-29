@@ -1,9 +1,6 @@
 import random
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import KFold
-import time
-
 
 
 
@@ -32,10 +29,11 @@ class DecisionTreeClassifier:
         random.seed(random_state)
         #if parameters are given when initializing the class, they will be used to set the attributes of the DecisionTree Class,
         #unless they are given when calling the fit method
+
     def __is_iterable(self,variable):
         try:
             iter(variable)
-            if isinstance(variable,pd.DataFrame) and len(variable) == 1:
+            if isinstance(variable,pd.DataFrame) or len(variable) == 1:
                 return False
             return not isinstance(variable,(str,bytes,np.int64))
         except TypeError:
@@ -57,7 +55,7 @@ class DecisionTreeClassifier:
    
         gini = 1 - sum([self.__proba(target,cls)**2 for cls in classes])
         return gini
-        #calculating the Gini impurity of the target DataFrame
+        #calculate the Gini impurity of the target DataFrame
 
     def __log_loss(self,target):
         if self.__is_iterable(target):
@@ -66,7 +64,7 @@ class DecisionTreeClassifier:
         else:
             log_loss = -(self.__proba(target,target)) * np.log(self.__proba(target,target))
         return log_loss
-        #calculating the log loss of the target DataFrame
+        #calculate the log loss of the target DataFrame
 
     def __ccp_helper(self):
         if self.left_child is not None and self.right_child is not None:
@@ -76,7 +74,8 @@ class DecisionTreeClassifier:
             leaf_number = left_leaves + right_leaves
             return (error,leaf_number)
         else:
-
+            if self.current_error is None:
+                return (0,1)
             return (self.current_error*self.samples,1)
         #helper function used to obtain data of subtrees for ccp
         
@@ -117,7 +116,12 @@ class DecisionTreeClassifier:
             self.highest_prob_class = target.squeeze().mode()[0]
         else:
             self.highest_prob_class = target.squeeze()
-        self.highest_prob = self.__proba(target,self.highest_prob_class)  
+        #check wheter target is iterable or not
+        self.highest_prob = self.__proba(target,self.highest_prob_class)
+
+        if self.highest_prob == 1:
+            return
+        #if the target is pure, return  
 
 
 
@@ -134,15 +138,10 @@ class DecisionTreeClassifier:
 
         random.seed(random_state)
         minimum_split_feature = None
-        minimum_split_value = None
-        left_data = None
-        right_data = None
-        left_target = None
-        right_target = None
         minimum_error = float('inf')
         self.current_error = criterion_function(target.squeeze())
         self.samples = len(features)
-        #setting up variables to record the best split's data
+        #defining variables to record the best split's data
 
 
 
@@ -155,6 +154,7 @@ class DecisionTreeClassifier:
         elif max_features == "log2":
             max_features = int(round(np.log2(len(features.columns))))
         #if max_features parameter is set to "sqrt" or "log2", calculate max_features based on total length of the dataset
+
         feature_columns = list(features.columns)
         if max_features is not None:
             random.shuffle(feature_columns)
@@ -190,20 +190,21 @@ class DecisionTreeClassifier:
             for split_value in split_values:
                 #comparing each split point's error and recording the one that minimizes it
 
-                left_data = features[features[feature] <= split_value]
-                right_data = features[features[feature] > split_value]
-
-                nan_data = features[pd.isna(features[feature])]
+                left_data = features.loc[features[feature] <= split_value]
+                right_data = features.loc[features[feature] > split_value]
+                nan_data = features.loc[pd.isna(features[feature])]
                 #splitting data into left_data, right_data and nan_data if there are nan values
+
                 for null_direction in ["left","right"]:
                     if null_direction == "left":
-                        left_data = pd.concat([left_data,nan_data])
+                        current_left = pd.concat([left_data,nan_data])
+                        current_right = right_data
                     elif null_direction == "right":
-                        right_data = pd.concat([right_data,nan_data])
+                        current_right = pd.concat([right_data,nan_data])
+                        current_left = left_data
                     #try out which direction would be better for samples with nan values
-
-                    left_target = pd.DataFrame(target.loc[left_data.index], index=left_data.index)
-                    right_target = pd.DataFrame(target.loc[right_data.index], index=right_data.index)
+                    left_target = target.loc[current_left.index.unique()]
+                    right_target = target.loc[current_right.index.unique()]
                     #dividing target into left and right target
 
                     if len(left_target) < min_samples_leaf or len(right_target) < min_samples_leaf:
@@ -215,8 +216,8 @@ class DecisionTreeClassifier:
                     #calculating the error of the split point based on the criterion function
 
                     if error < minimum_error and error < self.current_error*self.samples:
-                        minimum_left_data = left_data
-                        minimum_right_data = right_data
+                        minimum_left_data = current_left
+                        minimum_right_data = current_right
                         minimum_left_target = left_target
                         minimum_right_target = right_target
 
@@ -229,10 +230,11 @@ class DecisionTreeClassifier:
                         self.null_direction = null_direction
                         #recording the data of the split point that minimizes error
 
-
         if minimum_split_feature is None:
             return 
         #if no split was found, return
+
+
         elif max_depth is None or max_depth > 1:
             self.split_feature = minimum_split_feature
             self.split_value = minimum_split_value
@@ -260,7 +262,6 @@ class DecisionTreeClassifier:
         #cost complexity pruning
 
     def __row_predict(self,row:pd.DataFrame):
-
         if self.split_feature is None:
             return self.highest_prob_class           
         elif row[self.split_feature] <= self.split_value or (pd.isna(row[self.split_feature]) and self.null_direction == "left"):
@@ -274,117 +275,3 @@ class DecisionTreeClassifier:
         predictions = {i: self.__row_predict(features.loc[i]) for i in features.index}
         return pd.DataFrame(predictions.values(), index=predictions.keys())    
         #predict the values for all rows in the given features DataFrame by calling __row_predict for each row
-    
-
-if False:#__name__ == "__main__":
-    data = pd.read_csv("decision_tree_project/data/gender_classification_v7.csv")
-    
-
-    X = data.drop(columns=["gender"])
-    y = data["gender"]
-
-
-
-
-    kf = KFold(n_splits=5, shuffle=True, random_state=1)
-    predictions = []
-    for train_index, test_index in kf.split(X):
-    
-        X_train, X_test = X.loc[train_index], X.loc[test_index]
-        y_train, y_test = y.loc[train_index], y.loc[test_index]
-    
-        model = DecisionTreeClassifier(max_depth=10,criterion="gini",splitter="best")
-        model.fit(X_train, y_train)
-        predictions.append(model.predict(X_test))
-    predictions = pd.concat(predictions).sort_index()
-    #cross validation
-
-    accuracy_helper = 0
-    for y_value,pred in zip(y.values,predictions.values):       
-        if y_value == pred:
-            accuracy_helper += 1
-    accuracy = accuracy_helper / len(y)
-    print(f"Accuracy: {accuracy:.4f}")
-
-if False:#__name__ == "__main__":
-    data = pd.read_csv("decision_tree_project/data/Obesity_Classification.csv")
-
-    X = data.drop(columns=["Label","ID"])
-    y = data["Label"]
-
-    X_encoded = pd.get_dummies(X)
-
-    kf = KFold(n_splits=5, shuffle=True, random_state=1)
-    predictions = []
-    start = time.time()
-    for train_index, test_index in kf.split(X_encoded):
-    
-        X_train, X_test = X_encoded.loc[train_index], X_encoded.loc[test_index]
-        y_train, y_test = y.loc[train_index], y.loc[test_index]
-    
-        model = DecisionTreeClassifier(max_depth=10,criterion="log_loss",splitter="best")
-        model.fit(X_train, y_train)
-        predictions.append(model.predict(X_test))
-    end = time.time()
-    predictions = pd.concat(predictions).sort_index()
-    #cross validation
-
-    accuracy_helper = 0
-    for y_value,pred in zip(y.values,predictions.values):       
-        if y_value == pred:
-            accuracy_helper += 1
-    accuracy = accuracy_helper / len(y)
-    print(f"Accuracy: {accuracy:.4f}")
-    print(f"Time spent: {end-start}")
-
-if __name__ == "__main__":
-    data = pd.read_csv("decision_tree_project/data/credit_risk_dataset.csv")
-
-    X = data.drop(columns=["loan_status"])
-    y = data["loan_status"]
-
-    X_encoded = pd.get_dummies(X,columns = ["person_home_ownership","loan_intent","loan_grade","cb_person_default_on_file"])
-    #one hot encoding cathegorical features
-
-    kf = KFold(n_splits = 5, shuffle = True, random_state=1)
-    predictions = []
-    start = time.time()
-    for train_index, test_index in kf.split(X_encoded):
-    
-        X_train, X_test = X_encoded.loc[train_index], X_encoded.loc[test_index]
-        y_train, y_test = y.loc[train_index], y.loc[test_index]
-    
-        model = DecisionTreeClassifier(max_depth=10,criterion="log_loss",splitter="best",min_samples_split=10,min_samples_leaf=2,ccp_alpha=0.001)
-        model.fit(X_train, y_train)
-        predictions.append(model.predict(X_test))
-    end = time.time()
-    predictions = pd.concat(predictions).sort_index()
-    #cross validation
-
-    accuracy_helper = 0
-    true_positive = 0
-    true_negative = 0
-    false_positive = 0
-    false_negative = 0
-    for y_value,pred in zip(y.values,predictions.values):       
-        if y_value == pred:
-            accuracy_helper += 1
-        if y_value == 0:
-            if pred == 0:
-                true_negative += 1
-            elif pred == 1:
-                false_positive += 1
-        elif y_value == 1:
-            if pred == 1:
-                true_positive += 1
-            elif pred == 0:
-                false_negative += 1
-    accuracy = accuracy_helper / len(y)
-    precision = true_positive / (true_positive + false_positive)
-    recall = true_positive / (true_positive + false_negative)
-    f1_score = 2 * (precision * recall) / (precision + recall)
-    print(f"Accuracy: {accuracy:.4f}")
-    print(f"Precision: {precision:.4f}")
-    print(f"Recall: {recall:.4f}")
-    print(f"F1 score:  {f1_score:.4f}")
-    print(f"Time spent: {end-start}")   
