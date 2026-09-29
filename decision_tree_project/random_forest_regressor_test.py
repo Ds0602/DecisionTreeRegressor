@@ -1,6 +1,6 @@
 import pandas as pd
-from random_forest_regressor import RandomForestRegressor
-from decision_tree_regresso_test import convert_memory
+from models import RandomForestRegressor
+from models import convert_memory
 import time
 from sklearn.model_selection import KFold
 

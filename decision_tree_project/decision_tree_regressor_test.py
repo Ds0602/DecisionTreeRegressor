@@ -1,4 +1,4 @@
-from decision_tree_regressor import DecisionTreeRegressor
+from models import DecisionTreeRegressor
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import KFold

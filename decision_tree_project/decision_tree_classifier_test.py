@@ -1,4 +1,4 @@
-from decision_tree_classifier import DecisionTreeClassifier
+from models import DecisionTreeClassifier
 import time
 import pandas as pd
 from sklearn.model_selection import KFold
