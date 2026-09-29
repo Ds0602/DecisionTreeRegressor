@@ -1,7 +1,7 @@
 import pandas as pd
 import time
 from sklearn.model_selection import  KFold
-from models import RandomForestClassifier
+from models.random_forest_classifier import RandomForestClassifier
 
 if __name__ == "__main__":
     data = pd.read_csv("decision_tree_project/data/credit_risk_dataset.csv")

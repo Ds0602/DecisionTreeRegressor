@@ -1,11 +1,14 @@
 import pandas as pd
-from models import RandomForestRegressor
-from models import convert_memory
+from models.random_forest_regressor import RandomForestRegressor
+from decision_tree_regressor_test import convert_memory, mse, mae
 import time
 from sklearn.model_selection import KFold
 
 
+
+
 if __name__ == "__main__":
+
     data = pd.read_csv("decision_tree_project/data/laptop_data.csv")
 
     screen_type = []
