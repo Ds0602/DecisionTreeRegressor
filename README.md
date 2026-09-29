@@ -1,4 +1,4 @@
-# Decision Tree (From Scratch)
+# Decision Tree
 
 This project implements decision trees built from scratch using Python. It does not rely on libraries like `scikit-learn` for the model itself, and is mainly for learning and experimentation purposes. 
 
@@ -10,7 +10,7 @@ This project implements decision trees built from scratch using Python. It does 
 
 ## Features
 
-* Supports regression using:
+* Supports:
   * Regression:
     * Mean Squared Error (`squared_error`)
     * Mean Absolute Error (`absolute_error`)
@@ -24,7 +24,7 @@ This project implements decision trees built from scratch using Python. It does 
 * Handles:
 
   * Numerical and categorical (encoded) data
-  * Missing values (NaNs are sent to the left branch)
+  * Missing values
 * Includes Cost Complexity Pruning (`ccp_alpha`)
 * Basic control over:
 
