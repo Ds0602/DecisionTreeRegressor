@@ -69,13 +69,18 @@ min_samples_leaf = 2
 ccp_alpha = 0.001
 
 RESULTS:
-accuracy = 93.06%
+accuracy = 93.04%
+precision = 97.62%
+recall = 69.81%
+f1 score = 81.40%
+
 time taken = 1175.05 seconds
 time taken per iteration = 235.01 seconds
 
 OBSERVATIONS:
-- The model achieved good results, with high accuracy (93.06%).
-- However, it is even more noticeable the algorithms inneficiency, as each iteration took around 4 minutes (235.01 seconds).
+- The model achieved good results, with high accuracy (93.04%).
+- A high precision (97.62%) indicates that most samples predicted as 1/true are actually 1/true. However, the recall (69.81%) was significantly lower, showing that the model misses a substantial proportion of the actual 1/true targets.
+- Furthermore, it is even more noticeable the algorithms inneficiency, as each iteration took around 4 minutes (235.01 seconds).
 
 
 
